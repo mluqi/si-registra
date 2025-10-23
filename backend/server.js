@@ -58,16 +58,5 @@ app.use("/api/surat-legalisasi", suratlegalisasiRoutes);
 app.use("/api/surat-kuasa-khusus", suratKuasaKhususRoutes);
 app.use("/api/sheet-gid", sheetGidRoutes);
 
-// --- PENYESUAIAN DEPLOYMENT ---
-// 1. Sajikan file statis dari build frontend
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// 2. Catch-all route untuk client-side routing (React Router)
-// Ini akan mengirimkan index.html untuk setiap request yang tidak cocok dengan API routes di atas.
-app.get("*", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "../frontend/dist", "index.html"));
-});
-// --- AKHIR PENYESUAIAN DEPLOYMENT ---
-
 // Ekspor aplikasi Express agar Vercel dapat menggunakannya
 module.exports = app;
