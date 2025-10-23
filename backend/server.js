@@ -20,21 +20,29 @@ const sheetGidRoutes = require("./routes/sheetGidRoutes");
 const app = express();
 const server = http.createServer(app);
 
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  })
-);
+// Konfigurasi CORS dinamis untuk Vercel
+const whitelist = ["http://localhost:5173"];
+if (process.env.VERCEL_URL) {
+  whitelist.push(`https://${process.env.VERCEL_URL}`);
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (seperti dari Postman) atau dari whitelist
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.get("/", (req, res) => {
-  res.send("Welcome to si-registra api");
-});
 
 // API routes
 app.use("/api/auth", authRoutes);
@@ -50,17 +58,16 @@ app.use("/api/surat-legalisasi", suratlegalisasiRoutes);
 app.use("/api/surat-kuasa-khusus", suratKuasaKhususRoutes);
 app.use("/api/sheet-gid", sheetGidRoutes);
 
-const PORT = process.env.PORT || 8001;
+// --- PENYESUAIAN DEPLOYMENT ---
+// 1. Sajikan file statis dari build frontend
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-const startServer = async () => {
-  try {
-    server.listen(PORT, () => {
-      console.log(`🚀 Server is running on PORT ${PORT}`);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start the server:", error);
-    process.exit(1);
-  }
-};
+// 2. Catch-all route untuk client-side routing (React Router)
+// Ini akan mengirimkan index.html untuk setiap request yang tidak cocok dengan API routes di atas.
+app.get("*", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "../frontend/dist", "index.html"));
+});
+// --- AKHIR PENYESUAIAN DEPLOYMENT ---
 
-startServer();
+// Ekspor aplikasi Express agar Vercel dapat menggunakannya
+module.exports = app;
