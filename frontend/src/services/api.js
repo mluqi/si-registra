@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000/api", // Menghubungkan ke backend di localhost:8000
+  baseURL: "/api", // Gunakan path relatif agar berfungsi di lokal dan produksi
   timeout: 10000,
 });
 
