@@ -11,7 +11,7 @@ const SHEET_NAME = "form_register_surat_kuasa_khusus";
  */
 exports.getAllSuratKuasaKhusus = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, search, page = 1, limit = 10 } = req.query;
     const sheets = await getSheet();
     const resSheet = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -20,7 +20,9 @@ exports.getAllSuratKuasaKhusus = async (req, res) => {
 
     const rows = resSheet.data.values;
     if (!rows || rows.length <= 1) {
-      return res.status(200).json([]);
+      return res
+        .status(200)
+        .json({ data: [], total: 0, page: 1, totalPages: 1 });
     }
 
     let data = rows.slice(1).map((row) => ({
@@ -34,18 +36,43 @@ exports.getAllSuratKuasaKhusus = async (req, res) => {
       keterangan: row[7] || "",
     }));
 
+    let filteredData = data;
+
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Include the whole end day
 
-      data = data.filter((item) => {
+      filteredData = filteredData.filter((item) => {
         const itemDate = new Date(item.tanggal);
         return itemDate >= start && itemDate <= end;
       });
     }
 
-    res.status(200).json(data);
+    if (search) {
+      const lowercasedSearch = search.toLowerCase();
+      filteredData = filteredData.filter((item) => {
+        return (
+          item.nama_penerima_kuasa.toLowerCase().includes(lowercasedSearch) ||
+          item.nama_pemberi_kuasa.toLowerCase().includes(lowercasedSearch) ||
+          item.perkara_pn.toLowerCase().includes(lowercasedSearch)
+        );
+      });
+    }
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const total = filteredData.length;
+    const totalPages = Math.ceil(total / limitNum);
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginatedData = filteredData.slice(startIndex, startIndex + limitNum);
+
+    res.status(200).json({
+      data: paginatedData,
+      total,
+      page: pageNum,
+      totalPages,
+    });
   } catch (error) {
     console.error("Error fetching surat kuasa khusus data:", error);
     res.status(500).json({ message: "Server error while fetching data." });
@@ -77,8 +104,9 @@ exports.createSuratKuasaKhusus = async (req, res) => {
       });
     }
 
+    const id = uuidv4();
     const newRow = [
-      uuidv4(),
+      id,
       tanggal,
       nama_penerima_kuasa,
       nama_pemberi_kuasa,
@@ -97,7 +125,7 @@ exports.createSuratKuasaKhusus = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: "Data surat kuasa khusus berhasil dibuat." });
+      .json({ message: "Data surat kuasa khusus berhasil dibuat.", id });
   } catch (error) {
     console.error("Create surat kuasa khusus error:", error);
     res.status(500).json({ message: "Server error during data creation." });

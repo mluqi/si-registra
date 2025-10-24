@@ -13,6 +13,7 @@ import FormRegisterSuratKuasaKhusus from "./pages/SuratKuasaKhusus/FormRegisterS
 import Profile from "./pages/Profile/Profile";
 import Laporan from "./pages/Laporan/Laporan";
 import AllData from "./pages/DaftarData/AllData";
+import LogPage from "./pages/Logs/LogPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 
@@ -34,8 +35,12 @@ function App() {
               <RoleProtectedRoute allowedRoles={["admin", "superadmin"]} />
             }
           >
-            <Route path="/users" element={<Users />} />
             <Route path="/daftar-data" element={<AllData />} />
+          </Route>
+          <Route element={<RoleProtectedRoute allowedRoles={["superadmin"]} />}>
+            <Route path="/users" element={<Users />} />
+            <Route path="/log-aktivitas" element={<LogPage />} />
+            <Route path="/log-akses" element={<LogPage />} />
           </Route>
           <Route path="/profile" element={<Profile />} />
           <Route path="/laporan" element={<Laporan />} />

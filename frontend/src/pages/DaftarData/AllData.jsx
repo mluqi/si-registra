@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import DataTable from "../../components/DataTable";
 import toast, { Toaster } from "react-hot-toast";
-import EditDataModal from "./EditDataModal";
-// import { useNavigate } from "react-router-dom";
+import EditDataModal from "./EditDataModal"; // Pastikan komponen ini ada
+import Pagination from "../../components/Pagination"; // Impor komponen Pagination
+import { FaSearch } from "react-icons/fa";
 
 const AllData = () => {
   const [allData, setAllData] = useState({});
@@ -12,6 +13,15 @@ const AllData = () => {
   const [activeTab, setActiveTab] = useState("salinanPutusan");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingData, setEditingData] = useState(null);
+
+  // State untuk filter, search, dan pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const TABS = {
     salinanPutusan: {
@@ -83,47 +93,26 @@ const AllData = () => {
   };
 
   useEffect(() => {
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
-
     const fetchData = async () => {
-      // Cache key is now specific to the active tab
-      const CACHE_KEY = `allDataCache_${activeTab}`;
-
-      // If data for this tab already exists in state, don't refetch unless necessary
-      if (allData[activeTab]) {
-        console.log(`Data untuk ${TABS[activeTab].title} sudah ada.`);
-        setLoading(false);
-        return;
-      }
-
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          console.log(
-            `Menggunakan data dari cache untuk tab: ${TABS[activeTab].title}.`
-          );
-          setAllData((prev) => ({ ...prev, [activeTab]: data }));
-          setLoading(false);
-          return;
-        }
-      }
-
-      console.log(
-        `Mengambil data baru dari API untuk tab: ${TABS[activeTab].title}.`
-      );
       setLoading(true);
       setError(null);
 
       try {
-        const response = await api.get(TABS[activeTab].endpoint);
-        const newData = response.data;
+        const params = {
+          page: currentPage,
+          limit: 10, // atau jumlah item per halaman yang Anda inginkan
+          search: submittedQuery,
+          startDate,
+          endDate,
+        };
 
-        setAllData((prev) => ({ ...prev, [activeTab]: newData }));
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({ data: newData, timestamp: Date.now() })
-        );
+        const response = await api.get(TABS[activeTab].endpoint, { params });
+        const { data, total, page, totalPages: newTotalPages } = response.data;
+
+        setAllData((prev) => ({ ...prev, [activeTab]: data }));
+        setTotalItems(total);
+        setTotalPages(newTotalPages);
+        setCurrentPage(page);
       } catch (err) {
         toast.error(
           `Gagal memuat data untuk ${TABS[activeTab].title}. Silakan coba lagi nanti. ${err.message}}`
@@ -134,7 +123,24 @@ const AllData = () => {
     };
 
     fetchData();
-  }, [activeTab]); // Dependency array now includes activeTab
+  }, [activeTab, currentPage, submittedQuery, startDate, endDate]);
+
+  // Reset halaman ke 1 jika filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, submittedQuery, startDate, endDate]);
+
+  const handleFilter = (e) => {
+    e.preventDefault();
+    // fetchData akan dipanggil oleh useEffect di atas
+    setSubmittedQuery(searchQuery);
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const TabButton = ({ tabKey, title }) => (
     <button
@@ -175,17 +181,22 @@ const AllData = () => {
       throw new Error("tabKey or id is missing from form data.");
     }
 
+    const toastId = toast.loading("Memperbarui data...");
     await api.put(`${TABS[tabKey].endpoint}/${id}`, updateData);
 
     // Refresh data for the updated tab
     const response = await api.get(TABS[tabKey].endpoint);
-    setAllData((prevData) => ({
-      ...prevData,
-      [tabKey]: response.data,
-    }));
+    const { data } = response.data;
+
+    setAllData((prevData) => {
+      const updatedTab = prevData[tabKey].map((item) =>
+        item.id === id ? { ...item, ...updateData } : item
+      );
+      return { ...prevData, [tabKey]: updatedTab };
+    });
 
     handleCloseModal();
-    toast.success("Data berhasil diperbarui!");
+    toast.success("Data berhasil diperbarui!", { id: toastId });
   };
 
   const handleDelete = async (tabKey, id) => {
@@ -209,9 +220,6 @@ const AllData = () => {
 
       console.log("Data deleted successfully.");
       toast.success("Data berhasil dihapus.");
-
-      // Invalidate cache for this specific tab
-      localStorage.removeItem(`allDataCache_${tabKey}`);
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
@@ -242,40 +250,110 @@ const AllData = () => {
         </div>
       </div>
 
-      <div>
-        {Object.keys(TABS).map((key) => (
-          <div key={key} className={activeTab === key ? "block" : "hidden"}>
-            <DataTable
-              data={allData[key]}
-              columns={[
-                ...TABS[key].columns,
-                {
-                  header: "Aksi",
-                  key: "actions",
-                  render: (rowData) => (
-                    <div className="flex space-x-2">
-                      <button
-                        // Asumsi setiap item data memiliki properti 'id'
-                        onClick={() => handleEdit(key, rowData.id)}
-                        className="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(key, rowData.id)}
-                        className="px-3 py-1 text-sm text-red-600 border border-red-600 rounded hover:bg-red-50"
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  ),
-                },
-              ]}
-              isLoading={loading}
-              title={TABS[key].title}
+      {/* Filter and Search Section */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <form
+          onSubmit={handleFilter}
+          className="flex flex-wrap items-end gap-4"
+        >
+          <div className="flex-grow">
+            <label
+              htmlFor="search"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Cari Data
+            </label>
+            <div className="flex flex-row items-center justify-between gap-2">
+              <input
+                type="text"
+                id="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Ketik untuk mencari..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
+              >
+                <FaSearch className="mr-2" />
+                Cari
+              </button>
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="startDate"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Tanggal Mulai
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-        ))}
+          <div>
+            <label
+              htmlFor="endDate"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Tanggal Selesai
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </form>
+      </div>
+
+      <div>
+        <div className={activeTab ? "block" : "hidden"}>
+          <DataTable
+            data={allData[activeTab]}
+            columns={[
+              ...TABS[activeTab].columns,
+              {
+                header: "Aksi",
+                key: "actions",
+                render: (rowData) => (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(activeTab, rowData.id)}
+                      className="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(activeTab, rowData.id)}
+                      className="px-3 py-1 text-sm text-red-600 border border-red-600 rounded hover:bg-red-50"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            isLoading={loading}
+            title={TABS[activeTab].title}
+          />
+          {allData[activeTab] && allData[activeTab].length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={totalItems}
+              itemsPerPage={10}
+            />
+          )}
+        </div>
       </div>
 
       <EditDataModal

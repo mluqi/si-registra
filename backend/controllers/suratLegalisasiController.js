@@ -27,8 +27,9 @@ exports.createLegalisasi = async (req, res) => {
       });
     }
 
+    const id = uuidv4();
     const newRow = [
-      uuidv4(),
+      id,
       tanggal,
       nomor_perkara,
       jumlah_bandel,
@@ -43,7 +44,7 @@ exports.createLegalisasi = async (req, res) => {
       resource: { values: [newRow] },
     });
 
-    res.status(201).json({ message: "Data legalisasi berhasil dibuat." });
+    res.status(201).json({ message: "Data legalisasi berhasil dibuat.", id });
   } catch (error) {
     console.error("Create legalisasi error:", error);
     res.status(500).json({ message: "Server error during data creation." });
@@ -57,7 +58,7 @@ exports.createLegalisasi = async (req, res) => {
  */
 exports.getAllLegalisasi = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, search, page = 1, limit = 10 } = req.query;
     const sheets = await getSheet();
     const resSheet = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -66,7 +67,9 @@ exports.getAllLegalisasi = async (req, res) => {
 
     const rows = resSheet.data.values;
     if (!rows || rows.length <= 1) {
-      return res.status(200).json([]);
+      return res
+        .status(200)
+        .json({ data: [], total: 0, page: 1, totalPages: 1 });
     }
     let data = rows.slice(1).map((row) => ({
       id: row[0],
@@ -77,18 +80,39 @@ exports.getAllLegalisasi = async (req, res) => {
       keterangan: row[5] || "",
     }));
 
+    let filteredData = data;
+
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Include the whole end day
 
-      data = data.filter((item) => {
+      filteredData = filteredData.filter((item) => {
         const itemDate = new Date(item.tanggal);
         return itemDate >= start && itemDate <= end;
       });
     }
 
-    res.status(200).json(data);
+    if (search) {
+      const lowercasedSearch = search.toLowerCase();
+      filteredData = filteredData.filter((item) => {
+        return item.nomor_perkara.toLowerCase().includes(lowercasedSearch);
+      });
+    }
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const total = filteredData.length;
+    const totalPages = Math.ceil(total / limitNum);
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginatedData = filteredData.slice(startIndex, startIndex + limitNum);
+
+    res.status(200).json({
+      data: paginatedData,
+      total,
+      page: pageNum,
+      totalPages,
+    });
   } catch (error) {
     console.error("Error fetching legalisasi data:", error);
     res.status(500).json({ message: "Server error while fetching data." });

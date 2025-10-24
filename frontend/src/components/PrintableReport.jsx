@@ -8,7 +8,7 @@ const PrintableReport = React.forwardRef(
       : -1;
 
     return (
-      <div ref={ref} className="printable-content">
+      <div ref={ref} className="printable-content p-10">
         {/* Report Header */}
         <div className="report-header text-center mb-6">
           <h1 className="text-xl font-bold uppercase">

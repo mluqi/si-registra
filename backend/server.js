@@ -5,8 +5,8 @@ const http = require("http");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const rateLimit = require("express-rate-limit");
 
+const logActivityMiddleware = require("./middlewares/logActivity");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const salinanPutusanRoutes = require("./routes/salinanPutusanRoutes");
@@ -16,29 +16,19 @@ const suratKeteranganTidakDipidanaRoutes = require("./routes/suratKeteranganTida
 const suratlegalisasiRoutes = require("./routes/suratLegalisasiRoutes");
 const suratKuasaKhususRoutes = require("./routes/suratKuasaKhususRoutes");
 const sheetGidRoutes = require("./routes/sheetGidRoutes");
+const logRoutes = require("./routes/logRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 const app = express();
 const server = http.createServer(app);
 
-// Konfigurasi CORS dinamis untuk Vercel
-const whitelist = ["http://localhost:5173"];
-if (process.env.VERCEL_URL) {
-  whitelist.push(`https://${process.env.VERCEL_URL}`);
-}
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Izinkan request tanpa origin (seperti dari Postman) atau dari whitelist
-    if (!origin || whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 app.use(cookieParser());
 app.use(bodyParser.json());
@@ -46,17 +36,56 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // API routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/salinan-putusan", salinanPutusanRoutes);
-app.use("/api/warmeking", warmekingRoutes);
-app.use("/api/surat-kuasa-insidentil", suratKuasaInsidentilRoutes);
+app.use("/api/users", logActivityMiddleware("PENGGUNA"), userRoutes);
+app.use(
+  "/api/salinan-putusan",
+  logActivityMiddleware("SALINAN PUTUSAN"),
+  salinanPutusanRoutes
+);
+app.use("/api/warmeking", logActivityMiddleware("WARMEKING"), warmekingRoutes);
+app.use(
+  "/api/surat-kuasa-insidentil",
+  logActivityMiddleware("SK INSIDENTIL"),
+  suratKuasaInsidentilRoutes
+);
 app.use(
   "/api/surat-keterangan-tidak-dipidana",
+  logActivityMiddleware("SK TIDAK DIPIDANA"),
   suratKeteranganTidakDipidanaRoutes
 );
-app.use("/api/surat-legalisasi", suratlegalisasiRoutes);
-app.use("/api/surat-kuasa-khusus", suratKuasaKhususRoutes);
+app.use(
+  "/api/surat-legalisasi",
+  logActivityMiddleware("SURAT LEGALISASI"),
+  suratlegalisasiRoutes
+);
+app.use(
+  "/api/surat-kuasa-khusus",
+  logActivityMiddleware("SK KHUSUS"),
+  suratKuasaKhususRoutes
+);
 app.use("/api/sheet-gid", sheetGidRoutes);
+app.use("/api/logs", logRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
-// Ekspor aplikasi Express agar Vercel dapat menggunakannya
-module.exports = app;
+// Serve frontend build
+app.use(express.static(path.join(__dirname, "./public")));
+
+// For any other request, serve the index.html file
+app.get("/", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "./public", "index.html"));
+});
+
+const PORT = process.env.PORT || 8001;
+
+const startServer = async () => {
+  try {
+    server.listen(PORT, () => {
+      console.log(`🚀 Server is running on PORT ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start the server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

@@ -177,16 +177,23 @@ const FormRegisterSuratLegalisasi = () => {
                   >
                     Total Setoran (Rp)
                   </label>
-                  <input
-                    type="text"
-                    name="total_setoran"
-                    id="total_setoran"
-                    value={new Intl.NumberFormat("id-ID").format(
-                      formData.total_setoran
-                    )}
-                    readOnly
-                    className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-xl font-semibold"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <span className="text-blue-600 font-semibold text-lg">
+                        Rp
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      name="total_setoran"
+                      id="total_setoran"
+                      value={new Intl.NumberFormat("id-ID").format(
+                        formData.total_setoran
+                      )}
+                      readOnly
+                      className="w-full pl-14 pr-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 font-bold text-lg focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 

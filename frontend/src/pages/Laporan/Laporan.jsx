@@ -102,7 +102,12 @@ const Laporan = () => {
       const response = await api.get(config.endpoint, {
         params: { startDate, endDate },
       });
-      setData(response.data);
+      // Periksa apakah respons adalah objek dengan properti 'data' (untuk endpoint dengan pagination)
+      if (response.data && Array.isArray(response.data.data)) {
+        setData(response.data.data);
+      } else {
+        setData(response.data); // Fallback untuk endpoint tanpa pagination
+      }
     } catch (err) {
       setError(
         "Gagal memuat data laporan. Pastikan backend mendukung filter tanggal."

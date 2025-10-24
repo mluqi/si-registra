@@ -65,13 +65,22 @@ const AppHeader = () => {
           </div>
 
           {/* Right Section - Location & Date */}
-          <div className="text-right text-white py-4">
-            <h2 className="text-md font-semibold mb-1">
-              Pengadilan Negeri Singaraja
-            </h2>
-            <div className="flex items-center justify-end gap-3 text-blue-100 text-xs font-light">
-              <span>{getCurrentDate()}</span>
-              <span>{getCurrentTime()}</span>
+          <div className="flex flex-row text-right text-white py-4">
+            <div>
+              <h2 className="text-md font-semibold mb-1">
+                Pengadilan Negeri Singaraja
+              </h2>
+              <div className="flex items-center justify-end gap-3 text-blue-100 text-xs font-light">
+                <span>{getCurrentDate()}</span>
+                <span>{getCurrentTime()}</span>
+              </div>
+            </div>
+            <div className="m-1">
+              <img
+                src="/logo-pn.png"
+                alt="Logo PN Singaraja"
+                className="h-10 inline-block ml-2"
+              />
             </div>
           </div>
         </div>

@@ -57,53 +57,35 @@ const Dashboard = () => {
   }, []);
 
   const fetchStats = async () => {
+    const cacheKey = `dashboardCache_${startDate}_${endDate}`;
     const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
-    const CACHE_KEY = `dashboardCache_${startDate}_${endDate}`;
 
     try {
       // Cek cache terlebih dahulu
-      const cachedData = localStorage.getItem(CACHE_KEY);
+      const cachedData = localStorage.getItem(cacheKey);
       if (cachedData) {
-        const { stats: cachedStats, timestamp } = JSON.parse(cachedData);
-        const isCacheValid = Date.now() - timestamp < CACHE_DURATION;
-
-        if (isCacheValid) {
+        const { stats, timestamp } = JSON.parse(cachedData);
+        if (Date.now() - timestamp < CACHE_DURATION) {
           console.log("Menggunakan data dari cache dashboard.");
-          setStats(cachedStats);
+          setStats(stats);
           setLoading(false);
           return; // Hentikan eksekusi jika cache valid
         }
       }
 
-      console.log("Mengambil data baru dari API untuk dashboard.");
       setLoading(true);
       setError(null);
-      const params = { startDate, endDate };
-      const endpoints = [
-        api.get("/salinan-putusan", { params }),
-        api.get("/warmeking", { params }),
-        api.get("/surat-kuasa-insidentil", { params }),
-        api.get("/surat-kuasa-khusus", { params }),
-        api.get("/surat-keterangan-tidak-dipidana", { params }),
-        api.get("/surat-legalisasi", { params }),
-      ];
 
-      const results = await Promise.all(endpoints);
+      const response = await api.get("/dashboard/stats", {
+        params: { startDate, endDate },
+      });
 
-      const newStats = {
-        salinanPutusan: results[0].data.length,
-        warmeking: results[1].data.length,
-        suratKuasaInsidentil: results[2].data.length,
-        suratKuasaKhusus: results[3].data.length,
-        skTidakDipidana: results[4].data.length,
-        suratLegalisasi: results[5].data.length,
-      };
-
+      const newStats = response.data;
       setStats(newStats);
 
       // Simpan data baru ke cache
       localStorage.setItem(
-        CACHE_KEY,
+        cacheKey,
         JSON.stringify({ stats: newStats, timestamp: Date.now() })
       );
     } catch (err) {

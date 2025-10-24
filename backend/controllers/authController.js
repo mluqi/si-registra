@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { getSheet } = require("../services/googleSheet");
 const { v4: uuidv4 } = require("uuid");
+const { logAccess } = require("../services/logService");
+const { getClientIp, getClientBrowser } = require("../utils/requestUtils");
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 const USER_SHEET_NAME = "users";
@@ -102,15 +104,24 @@ exports.login = async (req, res) => {
         .json({ message: "Please provide email and password." });
     }
 
+    const logInfo = {
+      user: email,
+      ip: getClientIp(req),
+      browser: getClientBrowser(req.headers["user-agent"]),
+      status: "gagal",
+    };
+
     // Find user by email
     const user = await findUserByEmail(sheets, email);
     if (!user) {
+      await logAccess(logInfo);
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      await logAccess(logInfo);
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
@@ -119,6 +130,11 @@ exports.login = async (req, res) => {
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "90d", // Provide a default value
     });
+
+    // Log successful access
+    logInfo.status = "berhasil";
+    logInfo.user = user.name; // Use user's name for successful log
+    await logAccess(logInfo);
 
     res.status(200).json({
       status: "success",

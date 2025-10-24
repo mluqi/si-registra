@@ -71,8 +71,9 @@ exports.createUser = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const id = uuidv4();
     const newRow = [
-      uuidv4(),
+      id,
       name,
       email,
       hashedPassword,
@@ -86,7 +87,7 @@ exports.createUser = async (req, res, next) => {
       resource: { values: [newRow] },
     });
 
-    res.status(201).json({ message: "User created successfully." });
+    res.status(201).json({ message: "User created successfully.", id });
   } catch (error) {
     console.error("Create user error:", error);
     res.status(500).json({ message: "Server error during user creation." });

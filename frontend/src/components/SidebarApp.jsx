@@ -15,6 +15,7 @@ import {
   FaSignOutAlt,
   FaDatabase,
 } from "react-icons/fa";
+import { MdOutlineManageHistory } from "react-icons/md";
 import { HiChartBar } from "react-icons/hi2";
 import { useAuth } from "../context/AuthContext";
 
@@ -121,10 +122,26 @@ const SidebarApp = ({ isCollapsed, setIsCollapsed }) => {
                 Daftar Data
               </span>
             </NavLink>
+          </>
+        )}
+        {user && user.role === "superadmin" && (
+          <>
             <NavLink to="/users" className={navLinkClasses}>
               <FaUsers className="flex-shrink-0" size={20} />
               <span className={`ml-3 ${isCollapsed && "hidden"}`}>
                 Pengguna
+              </span>
+            </NavLink>
+            <NavLink to="/log-aktivitas" className={navLinkClasses}>
+              <MdOutlineManageHistory className="flex-shrink-0" size={20} />
+              <span className={`ml-3 ${isCollapsed && "hidden"}`}>
+                Log Aktivitas
+              </span>
+            </NavLink>
+            <NavLink to="/log-akses" className={navLinkClasses}>
+              <MdOutlineManageHistory className="flex-shrink-0" size={20} />
+              <span className={`ml-3 ${isCollapsed && "hidden"}`}>
+                Log Akses
               </span>
             </NavLink>
           </>

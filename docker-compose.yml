@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  backend:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Pastikan semua variabel lingkungan yang dibutuhkan backend Anda ada di sini
+      # atau dimuat dari file .env (lihat bagian Konfigurasi)
+      - PORT=8000
+      - SPREADSHEET_ID=${SPREADSHEET_ID}
+      - GOOGLE_SHEET_URL=${GOOGLE_SHEET_URL}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+      - JWT_SECRET=${JWT_SECRET}
